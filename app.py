@@ -263,8 +263,24 @@ print(max_tuple2[0],max_tuple2[1],max_tuple2[2])
 
         # Display output
         outputList = output.split()
-        st.text(outputList)
-       #st.text(output)
+        shortprd = int(outputList[0])
+        longprd = int(outputList[1])
+        result = float(outputList[2])/10
+        profit = round(result - cash,2)
+        result = round(result,2)
+        
+        
+        
+        st.markdown("""
+    <div style="color: #ffffff; font-size: 24px; font-weight: bold;">Recommendation</div>
+    <ul>
+        <li style="color: #ffffff; font-size: 20px;">Short period : {shortprd}</li>
+        <li style="color: #ffffff; font-size: 20px;">Large period : {largeprd}</li>
+        <li style="color: #ffffff; font-size: 20px;">Portfolio value : {result}</span> 
+        <span style="font-weight: bold;">Profit : {profit}</span>.</li>
+    </ul>
+    """, unsafe_allow_html=True)
+       
         
 ## LLM PART
 elif page_selection == "LLM":

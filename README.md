@@ -87,7 +87,7 @@ Then input the parameters and run
 here's a sample strategy to run
 
 
-=======
+
 
 ```python
 class MovingAverageCrossoverStrategy(bt.Strategy):
@@ -109,7 +109,7 @@ class MovingAverageCrossoverStrategy(bt.Strategy):
 ```
 
 
-=======
+
 
 ## LLM PAGE
 

@@ -32,6 +32,7 @@ final_portfolio_value = cerebro.broker.getvalue()
 print(f'Ending Portfolio Value: ${final_portfolio_value:.2f}')
 
 # Plot interactive graph
-fig,ax = plt.subplots()
-cerebro.plot(style='candlestick', barup='green', bardown='red',ax=ax)
-plt.show()
+#fig,ax = plt.subplots()
+#cerebro.plot(style='candlestick', barup='green', bardown='red')
+#plt.show()
+cerebro.plot()

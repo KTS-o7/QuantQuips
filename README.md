@@ -21,3 +21,5 @@ Packages required :
 - yfinance
 - pandas
 - openpyxl
+- backtrader
+- plotly

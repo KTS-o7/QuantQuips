@@ -248,7 +248,7 @@ for _ in range(int(GENERATIONS)):
     population = crossover_and_mutate(population, MUTATION_RATE)
 max_tuple2 = max(best, key=lambda x: x[2])
 
-print(max_tuple2)
+print(max_tuple2[0],max_tuple2[1],max_tuple2[2])
         """)
 
         # Execute the code
@@ -261,10 +261,33 @@ print(max_tuple2)
         sys.stdout = sys.__stdout__
 
         # Display output
-        outputList = output.split(',')
-        st.text(outputList)
-       #st.text(output)
-        
+        outputList = output.split()
+        shortPrd = int(outputList[0])
+        longPrd = int(outputList[1])    
+        portVal = round(float(outputList[2])/10, 2)
+        grossProfit = round(portVal - cash, 2)
+
+        st.markdown(f"""<div style="color: white; font-size: 24px; font-weight: bold;">
+<br>Recommended Values:<br>
+- Short period value is: {shortPrd}<br>
+- Long period value is: {longPrd}<br>
+- Portfolio value is: {portVal}<br>
+- Gross profit is   : {grossProfit}</div>
+""",unsafe_allow_html=True)
+
+        shortPrd = int(outputList[0])
+longPrd = int(outputList[1])
+portVal = round(float(outputList[2])/10, 2)
+grossProfit = round(portVal - cash, 2)
+
+st.markdown(f"""<div style="color: white; font-size: 24px; font-weight: bold;">
+<br>## Recommended Values:<br>
+- Short period value is: {shortPrd}<br>
+- Long period value is: {longPrd}<br>
+- Portfolio value is: {portVal}<br>
+- Gross profit is   : {grossProfit}</div>
+""",unsafe_allow_html=True)
+
 
 
 

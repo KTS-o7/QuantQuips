@@ -101,11 +101,7 @@ overall_market_condition = 'Bullish' if nse_percentage_change > 0 and sensex_per
 # Sidebar for navigation
 # Add a title and a selectbox to the sidebar
 st.sidebar.markdown("## **Navigation**")
-page_selection = st.sidebar.radio("**Goto**", ["Home", "Backtesting", "LLM","About Us"],captions=["Goes to home page","Goes to backtesting page","Goes to LLM","Goes to about us page"])
-
-
-
-# Continue with the rest of your sidebar code...
+page_selection = st.sidebar.radio("**Goto**", ["Home", "Backtesting", "Genetic Algorithm","LLM","About Us"],captions=["Goes to home page","Goes to backtesting page","Goes to genetic algorithm","Goes to LLM","Goes to about us page"])
 
 
 # Default page
@@ -162,15 +158,21 @@ if page_selection == "Home":
 
 
 
-elif page_selection == "Backtesting":
+elif page_selection == "Genetic Algorithm":
 
 
         # Streamlit code
-    st.title('Backtrader Backtest App')
+    st.title('Genetic Algorithm')
 
     # Text area for user to enter Python code
+    st.header("Enter Your Trading Strategy")
     strategy_code = st.text_area('Enter your Python code:', value='', height=None, max_chars=None, key=None)
+    
+    
 
+    st.header("Parameter Ranges")
+    short_period_range = st.slider("Short Period Range", min_value=10, max_value=50, value=(15, 30))
+    long_period_range = st.slider("Long Period Range", min_value=40, max_value=100, value=(40, 60))
     # Input for initial cash
     cash = st.number_input('Enter initial cash:', value=10000.0)
     if (cash < 0.0):
@@ -179,7 +181,7 @@ elif page_selection == "Backtesting":
 
     # Input for data file
     data_file = st.text_input('Enter path to data file:', value='')
-
+    
     # Button to run backtest
     if st.button('Run Backtest'):
         # Redirect stdout to a string buffer
@@ -245,6 +247,7 @@ for _ in range(int(GENERATIONS)):
             # Apply crossover and mutation to generate the next generation
     population = crossover_and_mutate(population, MUTATION_RATE)
 max_tuple2 = max(best, key=lambda x: x[2])
+
 print(max_tuple2)
         """)
 
@@ -258,7 +261,10 @@ print(max_tuple2)
         sys.stdout = sys.__stdout__
 
         # Display output
-        st.text(output)
+        outputList = output.split(',')
+        st.text(outputList)
+       #st.text(output)
+        
 
 
 

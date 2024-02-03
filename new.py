@@ -115,7 +115,18 @@ elif page_selection == "Backtesting":
 elif page_selection == "About Us":
     # Placeholder for about us page
     st.title("About Us")
-    st.write("Welcome to our stock analysis and backtesting platform. Add information about your team or project here.")
+    st.markdown(
+        """
+        <style>
+        .techy-font {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 50px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    st.write("Welcome to our stock analysis and backtesting platform. We are a group of passionate undergraduate students who are on a mission to make life easier for people dipping their toes into the fintech world. Our platform provides users with the tools they need to backtest genetic algorithms and carry out successful trades. With our innovative approach, we aim to revolutionize the way people interact with financial markets and empower them to make informed decisions.")
 
 # Auto-refresh every 1 minute
 st.write("Auto-refreshing every 1 minute.")

@@ -9,14 +9,50 @@ import textwrap
 import backtrader as bt
 import sys  # Library for system-specific parameters and functions
 import pandas as pd
+from gpt4all import GPT4All
+from pathlib import Path
+from streamlit_chat import message
+from langchain.chains import ConversationalRetrievalChain
+from langchain.document_loaders import PyPDFLoader, DirectoryLoader
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.llms import CTransformers
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.memory import ConversationBufferMemory
 
+# Function to load documents 
+def load_documents():
+    loader = DirectoryLoader('data/data', glob="*.pdf", loader_cls=PyPDFLoader)
+    documents = loader.load()
+    return documents
 
-st.set_page_config(layout="wide")
+# Function to split text into chunks
+def split_text_into_chunks(documents):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    text_chunks = text_splitter.split_documents(documents)
+    return text_chunks
 
+# Function to create embeddings
+def create_embeddings():
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device': "cpu"})
+    return embeddings
 
+# Function to create vector store
+def create_vector_store(text_chunks, embeddings):
+    vector_store = FAISS.from_documents(text_chunks, embeddings)
+    return vector_store
 
+# Function to create LLMS model
+def create_llms_model():
+    llm = CTransformers(model="mistral-7b-openorca.Q4_0.gguf", config={'max_new_tokens': 512, 'temperature': 0.01})
+    return llm
+
+st.set_page_config(page_title="QuantQuips", page_icon="chart_with_upwards_trend", layout='wide')
 # Set page title
-st.title("QuantQuip")
+st.title("QuantQuips")
+st.markdown('<style>h1{color: orange; text-align: center;}</style>', unsafe_allow_html=True)
+
+
 
 # Function to fetch real-time stock data during market hours
 def fetch_realtime_stock_data(ticker_symbol, period, interval):
@@ -58,7 +94,7 @@ overall_market_condition = 'Bullish' if nse_percentage_change > 0 and sensex_per
 # Sidebar for navigation
 # Add a title and a selectbox to the sidebar
 st.sidebar.markdown("## **Navigation**")
-page_selection = st.sidebar.radio("**Goto**", ["Home", "Backtesting", "About Us"],captions=["Goes to home page","Goes to backtesting page","Goes to about us page"])
+page_selection = st.sidebar.radio("**Goto**", ["Home", "Backtesting", "LLM","About Us"],captions=["Goes to home page","Goes to backtesting page","Goes to LLM","Goes to about us page"])
 
 
 
@@ -72,7 +108,7 @@ def plot_chart(stock_data, title, subheader):
     fig.update_yaxes(title_text='Closing Price')
     st.subheader(subheader)
     if overall_market_condition == 'Bullish':
-        fig.update_traces(line_color='green')
+        fig.update_traces(line_color='light-blue')
     else:
         fig.update_traces(line_color='red')
     st.plotly_chart(fig, use_container_width=True, width=1200)
@@ -179,10 +215,71 @@ elif page_selection == "Backtesting":
 
 
 
+elif page_selection == "LLM":
+    st.title("QuantQuip-ChatBot")
+   
+    st.markdown('<style>h1{color: orange; text-align: center;}</style>', unsafe_allow_html=True)
+    st.subheader('Get your finances up and above 💪')
+    st.markdown('<style>h3{color: pink; text-align: center;}</style>', unsafe_allow_html=True)
 
+            # loading of documents
+    documents = load_documents()
 
+        # Split text into chunks
+    text_chunks = split_text_into_chunks(documents)
 
+        # Create embeddings
+    embeddings = create_embeddings()
 
+        # Create vector store
+    vector_store = create_vector_store(text_chunks, embeddings)
+
+        # Create LLMS model
+    llm = create_llms_model()
+
+        # Initialize conversation history
+    if 'history' not in st.session_state:
+        st.session_state['history'] = []
+
+    if 'generated' not in st.session_state:
+        st.session_state['generated'] = ["Hello! Ask me anything about finance 🤗"]
+
+    if 'past' not in st.session_state:
+        st.session_state['past'] = ["Hey! 👋"]
+
+    # Create memory
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+    # Create chain
+    chain = ConversationalRetrievalChain.from_llm(llm=llm, chain_type='stuff',
+                                                retriever=vector_store.as_retriever(search_kwargs={"k": 2}),
+                                                memory=memory)
+
+    # Define chat function
+    def conversation_chat(query):
+        result = chain({"question": query, "chat_history": st.session_state['history']})
+        st.session_state['history'].append((query, result["answer"]))
+        return result["answer"]
+
+    # Display chat history
+    reply_container = st.container()
+    container = st.container()
+
+    with container:
+        with st.form(key='my_form', clear_on_submit=True):
+            user_input = st.text_input("Question:", placeholder="Ask about your portfolio", key='input')
+            submit_button = st.form_submit_button(label='Send')
+
+        if submit_button and user_input:
+            output = conversation_chat(user_input)
+            st.session_state['past'].append(user_input)
+            st.session_state['generated'].append(output)
+
+    if st.session_state['generated']:
+        with reply_container:
+            for i in range(len(st.session_state['generated'])):
+                message(st.session_state["past"][i], is_user=True, key=str(i) + '_user', avatar_style="thumbs")
+                message(st.session_state["generated"][i], key=str(i), avatar_style="fun-emoji")
 
 
 
@@ -212,24 +309,28 @@ elif page_selection == "Backtesting":
 
 elif page_selection == "About Us":
     st.title("About Us")
+    st.markdown('<style>h1{color: orange; text-align: center;}</style>', unsafe_allow_html=True)
+    
     st.markdown("""
-    **Welcome to our stock analysis and backtesting platform.** 
-    -  We are a group of passionate undergraduate students who are on a mission to make life easier for people dipping their toes into the fintech world. 
-    - Our platform provides users with the tools they need to backtest genetic algorithms and carry out successful trades. 
-    - With our innovative approach, we aim to revolutionize the **way people interact with financial markets** and **empower them to make informed decisions**.
-    """)
+    <div style="color: #ffffff; font-size: 24px; font-weight: bold;">Welcome to our stock analysis and backtesting platform.</div>
+    <ul>
+        <li style="color: #ffffff; font-size: 20px;">We are a group of passionate undergraduate students who are on a mission to make life easier for people dipping their toes into the fintech world.</li>
+        <li style="color: #ffffff; font-size: 20px;">Our platform provides users with the tools they need to backtest genetic algorithms and carry out successful trades.</li>
+        <li style="color: #ffffff; font-size: 20px;">With our innovative approach, we aim to revolutionize the <span style="font-weight: bold;">way people interact with financial markets</span> and <span style="font-weight: bold;">empower them to make informed decisions</span>.</li>
+    </ul>
+    """, unsafe_allow_html=True)
 
+    st.markdown('<style>h3{color: orange; text-align: center;}</style>', unsafe_allow_html=True)
     st.subheader("Our Team")
-    st.markdown("""
-    Meet our team of talented individuals who are dedicated to making a difference in the fintech world.
-    """)
+    st.markdown("""<div style="color: white; font-size: 24px; font-weight: bold;">Meet our team of talented individuals who are dedicated to making a difference in the fintech world.</div>
+    """,unsafe_allow_html=True)
 
     col1, col2, col3 ,col4 = st.columns(4)
     with col1:
         st.image("https://avatars.githubusercontent.com/u/45279662?v=4", use_column_width=True)
         st.markdown("""
         #### Krishnatejaswi S
-        Python Developer
+        Langchain Developer
         """)
     with col2:
         st.image("https://avatars.githubusercontent.com/u/45279662?v=4", use_column_width=True)

@@ -17,10 +17,4 @@ deactivate
 
 Packages required :
 
-- streamlit
-- yfinance
-- pandas
-- openpyxl
-- backtrader
-- plotly
-- streamlit-aggrid
+

@@ -23,3 +23,4 @@ Packages required :
 - openpyxl
 - backtrader
 - plotly
+- streamlit-aggrid

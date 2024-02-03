@@ -8,6 +8,7 @@ import contextlib
 import textwrap
 import backtrader as bt
 import sys  # Library for system-specific parameters and functions
+import pandas as pd
 
 
 st.set_page_config(layout="wide")
@@ -57,10 +58,9 @@ overall_market_condition = 'Bullish' if nse_percentage_change > 0 and sensex_per
 # Sidebar for navigation
 # Add a title and a selectbox to the sidebar
 st.sidebar.markdown("## **Navigation**")
-page_selection = st.sidebar.selectbox("", ["Home", "Backtesting", "About Us"])
+page_selection = st.sidebar.radio("**Goto**", ["Home", "Backtesting", "About Us"],captions=["Goes to home page","Goes to backtesting page","Goes to about us page"])
 
-# Add some space between the selectbox and the next item
-st.sidebar.markdown("---")
+
 
 # Continue with the rest of your sidebar code...
 

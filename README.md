@@ -20,15 +20,18 @@ deactivate
 ```
 
 Packages required : refer the `requirements.txt` file
+
 ```python
 pip install -r requirements.txt
 ```
+
 Clone this repository using `git clone` and deploy using the command-
+
 ```python
 streamlit run app.py
 ```
 
-You can also just view the website on this link and interact with the application [link](https://www.youtube.com/watch?v=HIcSWuKMwOw) 
+You can also just view the website on this link and interact with the application [link](https://www.youtube.com/watch?v=HIcSWuKMwOw)
 
 ## HOME PAGE
 
@@ -68,6 +71,7 @@ class TestStrategy(bt.Strategy):
 ```
 
 make sure you add your strategy under TestStrategy class and add the line
+
 ```python
 import backtrader as bt
 ```
@@ -81,6 +85,10 @@ Enter a strategy which accepts the short term and long term duration as input pa
 Then input the parameters and run
 
 here's a sample strategy to run
+
+
+=======
+
 ```python
 class MovingAverageCrossoverStrategy(bt.Strategy):
     params = (
@@ -101,10 +109,13 @@ class MovingAverageCrossoverStrategy(bt.Strategy):
 ```
 
 
+=======
+
 ## LLM PAGE
 
 Enter your queries and get AI generated answers for the same here.
 Sample question - `what is a genetic algorithm?`
 
+=======
 ## ABOUT US
 We are a group of passionate and enthusiastic undergraduate students! Check out this page for more information about us. Explore Quantquips, where we blend technology and finance to redefine algorithmic trading.

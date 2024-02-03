@@ -5,3 +5,4 @@ mistral-7b-openorca.Q4_0.gguf
 data/data/
 data/companyData/IND/
 data/companyData/US/
+__pycache__/

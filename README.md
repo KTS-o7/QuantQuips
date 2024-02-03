@@ -86,6 +86,9 @@ Then input the parameters and run
 
 here's a sample strategy to run
 
+
+=======
+
 ```python
 class MovingAverageCrossoverStrategy(bt.Strategy):
     params = (
@@ -105,11 +108,14 @@ class MovingAverageCrossoverStrategy(bt.Strategy):
             self.sell()
 ```
 
+
+=======
+
 ## LLM PAGE
 
 Enter your queries and get AI generated answers for the same here.
 Sample question - `what is a genetic algorithm?`
 
+=======
 ## ABOUT US
-
 We are a group of passionate and enthusiastic undergraduate students! Check out this page for more information about us. Explore Quantquips, where we blend technology and finance to redefine algorithmic trading.

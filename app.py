@@ -46,6 +46,13 @@ def create_vector_store(text_chunks, embeddings):
 def create_llms_model():
     llm = CTransformers(model="mistral-7b-openorca.Q4_0.gguf", config={'max_new_tokens': 512, 'temperature': 0.01})
     return llm
+documents = load_documents()
+
+        # Split text into chunks
+text_chunks = split_text_into_chunks(documents)
+
+
+
 
 st.set_page_config(page_title="QuantQuips", page_icon="chart_with_upwards_trend", layout='wide')
 # Set page title
@@ -222,20 +229,16 @@ elif page_selection == "LLM":
     st.subheader('Get your finances up and above 💪')
     st.markdown('<style>h3{color: pink; text-align: center;}</style>', unsafe_allow_html=True)
 
-            # loading of documents
-    documents = load_documents()
-
-        # Split text into chunks
-    text_chunks = split_text_into_chunks(documents)
+    
 
         # Create embeddings
     embeddings = create_embeddings()
 
         # Create vector store
-    vector_store = create_vector_store(text_chunks, embeddings)
-
-        # Create LLMS model
+    vector_store = create_vector_store(text_chunks, embeddings) 
+    # Create LLMS model
     llm = create_llms_model()
+   
 
         # Initialize conversation history
     if 'history' not in st.session_state:

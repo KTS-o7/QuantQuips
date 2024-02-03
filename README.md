@@ -20,3 +20,4 @@ Packages required :
 - streamlit
 - yfinance
 - pandas
+- openpyxl

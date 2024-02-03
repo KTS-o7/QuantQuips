@@ -14,3 +14,9 @@ To deactivate
 ```bash
 deactivate
 ```
+
+Packages required :
+
+- streamlit
+- yfinance
+- pandas

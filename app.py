@@ -271,15 +271,13 @@ print(max_tuple2[0],max_tuple2[1],max_tuple2[2])
         
         
         
-        st.markdown("""
-    <div style="color: #ffffff; font-size: 24px; font-weight: bold;">Recommendation</div>
-    <ul>
-        <li style="color: #ffffff; font-size: 20px;">Short period : {shortprd}</li>
-        <li style="color: #ffffff; font-size: 20px;">Large period : {largeprd}</li>
-        <li style="color: #ffffff; font-size: 20px;">Portfolio value : {result}</span> 
-        <span style="font-weight: bold;">Profit : {profit}</span>.</li>
-    </ul>
-    """, unsafe_allow_html=True)
+        st.markdown(f"""
+### Our Recommendation
+- **Shortprd**: {shortprd}
+- **Longprd**: {longprd}
+- **Result**: {result} 
+- **Profit**: {profit}
+""")
        
         
 ## LLM PART

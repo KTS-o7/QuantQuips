@@ -35,7 +35,7 @@ def split_text_into_chunks(documents):
 
 # Function to create embeddings
 def create_embeddings():
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device': "cpu"})
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device': "cuda"})
     return embeddings
 
 # Function to create vector store
@@ -45,7 +45,7 @@ def create_vector_store(text_chunks, embeddings):
 
 # Function to create LLMS model
 def create_llms_model():
-    llm = CTransformers(model="mistral-7b-openorca.Q4_0.gguf", config={'max_new_tokens': 512, 'temperature': 0.01})
+    llm = CTransformers(model="mistral-7b-openorca.Q4_0.gguf", config={'max_new_tokens': 512, 'temperature': 0.01,'gpu_layers': 10})
     return llm
 documents = load_documents()
 

@@ -63,7 +63,7 @@ multidict==6.0.5
 multitasking==0.0.11
 mypy-extensions==1.0.0
 networkx==3.2.1
-nltk==3.8.1
+nltk==3.9
 nsepy==0.8
 nsetools==1.0.11
 numpy==1.26.3

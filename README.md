@@ -1,121 +1,223 @@
-# <span style="color:  #00FFFF">QUANTQUIPS</span>
+# QuantQuips
 
-<span style="color: lightblue;">Quantquips, a cutting-edge backtesting platform seamlessly crafted with Streamlit and powered by Python. Elevate your trading strategies with precision on our dynamic backtesting page, unleash the power of genetic algorithms to discover optimal parameters, and let our sophisticated LLM guide you through the intricate realm of algorithmic trading. Elevate your trading experience with Quantquips - where innovation meets precision.</span>
+[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.31.0-red.svg)](https://streamlit.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-informational.svg)](VERSION)
 
-Set up a virtual environment in your system using the following commands for safer execution and deployment of the code.
+QuantQuips is a Streamlit-based backtesting workspace for traders, students, and developers who want to prototype algorithmic trading ideas in Python. It combines Backtrader strategy execution, genetic algorithm parameter search, market index charts, and a local LLM-assisted finance Q&A page.
 
-```python
-python3 -m venv stealthAlgo
-```
+> This project is an educational tool. It is not financial advice and should not be used as the only basis for live trading decisions.
+
+## Table of Contents
+
+- [Features](#features)
+- [Demo](#demo)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Page Guide](#page-guide)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
+
+- Home dashboard with Nifty 50 and Sensex price charts from Yahoo Finance.
+- Backtesting page for running custom Backtrader strategies.
+- Genetic Algorithm page for searching moving-average strategy parameters.
+- LLM page for finance-related Q&A with local document retrieval.
+- About page with project/team information.
+
+## Demo
+
+A video walkthrough is available here: [QuantQuips demo video](https://www.youtube.com/watch?v=HIcSWuKMwOw).
+
+There is not currently a public live deployment. If you deploy one, replace the video-only reference above with the hosted Streamlit URL and add a screenshot in this section.
+
+## Requirements
+
+- Python 3.11
+- pip
+- macOS, Linux, or Windows with a shell that can activate a Python virtual environment
+- Optional for the LLM page: a local CTransformers-compatible model file named `mistral-7b-openorca.Q4_0.gguf`
+- Optional for the LLM page: PDF documents under `data/data/`
+- Optional for CSV backtests: downloaded market CSV files under `data/companyData/`
+
+The Python dependencies are pinned in [requirements.txt](requirements.txt).
+
+## Installation
+
+1. Clone the repository.
+
+   ```bash
+   git clone https://github.com/KTS-o7/QuantQuips.git
+   cd QuantQuips
+   ```
+
+2. Create and activate a virtual environment.
+
+   ```bash
+   python3.11 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+   On Windows PowerShell:
+
+   ```powershell
+   py -3.11 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+3. Install dependencies.
+
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+4. Add optional local assets if you plan to use the LLM or local CSV backtesting flows.
+
+   ```text
+   data/data/                         # PDF files for retrieval-augmented Q&A
+   data/companyData/US/AAPL.csv       # Example local CSV path used by trader.py
+   mistral-7b-openorca.Q4_0.gguf      # Local LLM model file
+   ```
+
+## Usage
+
+Start the Streamlit app:
 
 ```bash
-source stealthAlgo/bin/activate
-pip install <package-name>
+streamlit run app.py
 ```
 
-To deactivate
+Then open the local URL printed by Streamlit, usually `http://localhost:8501`.
+
+Deactivate the virtual environment when finished:
 
 ```bash
 deactivate
 ```
 
-Packages required : refer the `requirements.txt` file
+## Page Guide
 
-```python
-pip install -r requirements.txt
-```
+### Home
 
-Clone this repository using `git clone` and deploy using the command-
+The Home page downloads current session data for:
 
-```python
-streamlit run app.py
-```
+- Nifty 50: `^NSEI`
+- Sensex: `^BSESN`
 
-You can also just view the website on this link and interact with the application [link](https://www.youtube.com/watch?v=HIcSWuKMwOw)
+It displays line charts, recent price rows, and a simple bullish/bearish market condition based on the current period's percentage change.
 
-## HOME PAGE
+### Backtesting
 
-This page contains real time data and graphs of Nifty 50 and Sensex.
-Hover over the graphs for an interactive experience.
+Use the Backtesting page to paste a Backtrader strategy class named `TestStrategy`. The app writes the strategy to `strategies.py`, then runs `trader.py` with the initial principal amount entered in the UI.
 
-## BACKTESTING PAGE
-
-Here is a trial strategy for you to test out and view the plot and data for
+Example strategy:
 
 ```python
 import backtrader as bt
 
-# your Stratey
-class TestStrategy(bt.Strategy):
 
+class TestStrategy(bt.Strategy):
     def log(self, txt, dt=None):
-        ''' Logging function fot this strategy'''
         dt = dt or self.datas[0].datetime.date(0)
-        print('%s, %s' % (dt.isoformat(), txt))
+        print(f"{dt.isoformat()}, {txt}")
 
     def __init__(self):
         self.dataclose = self.datas[0].close
 
     def next(self):
-        self.log('Close, %.2f' % self.dataclose[0])
+        self.log(f"Close, {self.dataclose[0]:.2f}")
 
-        if self.dataclose[0] < self.dataclose[-1]:
-            # current close less than previous close
-
-            if self.dataclose[-1] < self.dataclose[-2]:
-                # previous close less than the previous close
-
-                # BUY, BUY, BUY!!! (with all possible default parameters)
-                self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                self.buy()
+        if self.dataclose[0] < self.dataclose[-1] and self.dataclose[-1] < self.dataclose[-2]:
+            self.log(f"BUY CREATE, {self.dataclose[0]:.2f}")
+            self.buy()
 ```
 
-make sure you add your strategy under TestStrategy class and add the line
+Current data note: `trader.py` expects a local Yahoo Finance CSV at `data/companyData/US/AAPL.csv`. Update that path in `trader.py` or add the CSV before running this page.
+
+### Genetic Algorithm
+
+Use the Genetic Algorithm page to search for moving-average crossover parameters. Paste a strategy class named `MovingAverageCrossoverStrategy` that accepts `short_period` and `long_period` parameters, choose parameter ranges, enter initial cash, and provide a Yahoo Finance CSV path.
+
+Example strategy:
 
 ```python
 import backtrader as bt
-```
-
-A plot pops up and your output is displayed once the plot is closed.
-If the plot does not pop up, check your system settings.
-
-## GENETIC ALGORITHM PAGE
-
-Enter a strategy which accepts the short term and long term duration as input parameters.
-Then input the parameters and run
-
-here's a sample strategy to run
 
 
-
-
-```python
 class MovingAverageCrossoverStrategy(bt.Strategy):
     params = (
-        ('short_period', 50),
-        ('long_period', 200),
+        ("short_period", 50),
+        ("long_period", 200),
     )
 
     def __init__(self):
-        self.short_ma = bt.indicators.SimpleMovingAverage(self.data.close, period=self.params.short_period)
-        self.long_ma = bt.indicators.SimpleMovingAverage(self.data.close, period=self.params.long_period)
+        self.short_ma = bt.indicators.SimpleMovingAverage(
+            self.data.close,
+            period=self.params.short_period,
+        )
+        self.long_ma = bt.indicators.SimpleMovingAverage(
+            self.data.close,
+            period=self.params.long_period,
+        )
         self.crossover = bt.indicators.CrossOver(self.short_ma, self.long_ma)
 
     def next(self):
-        if self.crossover > 0:  # Short-term MA crosses above Long-term MA
+        if self.crossover > 0:
             self.buy()
-        elif self.crossover < 0:  # Short-term MA crosses below Long-term MA
+        elif self.crossover < 0:
             self.sell()
 ```
 
+The page reports the best short period, long period, estimated result, and estimated profit from the generated population.
 
+### LLM
 
+The LLM page builds a retrieval chain over PDF files in `data/data/` and uses the local `mistral-7b-openorca.Q4_0.gguf` model through CTransformers.
 
-## LLM PAGE
+Example prompts:
 
-Enter your queries and get AI generated answers for the same here.
-Sample question - `what is a genetic algorithm?`
+- `What is a genetic algorithm?`
+- `How does a moving average crossover strategy work?`
+- `What risks should I consider before backtesting a strategy?`
 
-=======
-## ABOUT US
-We are a group of passionate and enthusiastic undergraduate students! Check out this page for more information about us. Explore Quantquips, where we blend technology and finance to redefine algorithmic trading.
+If the model file or PDF directory is missing, add those assets before using this page.
+
+## Project Structure
+
+```text
+.
++-- app.py                         # Streamlit application and page routing
++-- trader.py                      # Backtrader runner used by the Backtesting page
++-- strategies.py                  # Strategy file overwritten by the Backtesting page
++-- requirements.txt               # Pinned Python dependencies
++-- data/
+|   +-- TickerList/                # Static ticker lists
+|   +-- companyData/collectData.py # Data collection helper
++-- VERSION                        # Project version
++-- LICENSE                        # MIT license
+```
+
+## Contributing
+
+Contributions are welcome. For changes that affect behavior, include a short description of the scenario tested and any required local data/model assets.
+
+Recommended workflow:
+
+```bash
+git checkout -b feature/your-change
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Before opening a pull request, confirm the affected page starts successfully and update this README if setup steps, data paths, or user workflows change.
+
+## License
+
+QuantQuips is released under the [MIT License](LICENSE).

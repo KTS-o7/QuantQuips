@@ -1,0 +1,3 @@
+"""Core services for QuantQuips."""
+
+__version__ = "0.2.0"

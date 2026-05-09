@@ -6,3 +6,4 @@ data/data/
 data/companyData/IND/
 data/companyData/US/
 __pycache__/
+.venv/

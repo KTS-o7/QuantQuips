@@ -47,9 +47,7 @@ def fetch_history(ticker: str, start: str, end: str, interval: str = "1d") -> pd
 
 def normalize_price_index(data: pd.DataFrame) -> pd.DataFrame:
     normalized = data.copy()
-    normalized.index = pd.to_datetime(normalized.index, errors="coerce")
-    if getattr(normalized.index, "tz", None) is not None:
-        normalized.index = normalized.index.tz_convert(None)
+    normalized.index = pd.to_datetime(normalized.index, errors="coerce", utc=True).tz_convert(None)
     normalized = normalized[~normalized.index.isna()]
     return normalized.sort_index()
 

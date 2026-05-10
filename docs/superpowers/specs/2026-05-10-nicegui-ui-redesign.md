@@ -44,7 +44,7 @@ uvicorn nicegui_app:app --host 0.0.0.0 --port 8080
 Add to `requirements-base.txt` (or a new `requirements-nicegui.txt`):
 
 ```
-nicegui>=1.4
+nicegui>=3.11.1
 plotly>=5.18
 ```
 

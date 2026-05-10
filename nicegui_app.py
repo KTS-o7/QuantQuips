@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from functools import partial
 
 import pandas as pd
@@ -15,7 +16,7 @@ from quantquips.config import get_settings
 from quantquips.data_service import get_history, load_ticker_lists
 from quantquips.strategies import STRATEGIES
 
-from nicegui import app, ui
+from nicegui import ui
 
 
 NAV_ITEMS = [
@@ -55,12 +56,12 @@ async def page_home() -> None:
     with ui.row().classes("w-full q-px-md q-gutter-md"):
         for label, ticker in symbols.items():
             with ui.card().classes("flex-1"):
-                title_label = ui.label(label).classes("text-subtitle1 text-bold")
+                ui.label(label).classes("text-subtitle1 text-bold")
                 metric_label = ui.label("Loading...").classes("text-h6")
                 chart_slot = ui.column().classes("w-full")
 
                 async def _load(lbl=label, tkr=ticker, ml=metric_label, cs=chart_slot) -> None:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.get_running_loop()
                     try:
                         data = await loop.run_in_executor(
                             None, partial(_download_period, tkr, "1d", "1m")
@@ -102,9 +103,6 @@ async def page_backtest() -> None:
     default_start = default_end.replace(year=default_end.year - 1)
     ticker_opts = _ticker_options()
 
-    # --- state refs ---
-    result_area = ui.column().classes("w-full q-px-md")
-
     with ui.row().classes("w-full q-px-md q-gutter-md items-start"):
         # Left input panel
         with ui.card().classes("col-3 q-pa-md"):
@@ -144,8 +142,8 @@ async def page_backtest() -> None:
 
         # Show price preview
         with preview_slot:
-            spinner = ui.spinner(size="lg")
-        loop = asyncio.get_event_loop()
+            ui.spinner(size="lg")
+        loop = asyncio.get_running_loop()
         try:
             preview = await loop.run_in_executor(
                 None, partial(get_history, tkr, start.isoformat(), end.isoformat(), "1d", refresh_input.value)
@@ -174,7 +172,7 @@ async def page_backtest() -> None:
 
         # Run backtest
         with result_area:
-            spin2 = ui.spinner(size="lg")
+            ui.spinner(size="lg")
         try:
             res: BacktestResult = await loop.run_in_executor(
                 None, partial(run_backtest, tkr, strat, start, end, float(cash_input.value),
@@ -187,7 +185,6 @@ async def page_backtest() -> None:
             return
 
         result_area.clear()
-        import math
         with result_area:
             ui.label(f"{res.strategy} on {res.ticker}  ·  {res.start} → {res.end}").classes("text-caption text-grey-5")
             # Metrics row 1
@@ -293,13 +290,11 @@ async def page_ga() -> None:
             ui.notification("Long SMA range must exceed Short SMA minimum.", type="warning")
             return
 
-        import asyncio as _asyncio
         queue: asyncio.Queue = asyncio.Queue()
-
         def _cb(current: int, total: int) -> None:
             asyncio.get_event_loop().call_soon_threadsafe(queue.put_nowait, (current, total))
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         fut = loop.run_in_executor(
             None,
             partial(
@@ -319,7 +314,6 @@ async def page_ga() -> None:
             ),
         )
 
-        total_gens = int(ga_gen.value)
         while not fut.done():
             try:
                 current, total = await asyncio.wait_for(asyncio.shield(queue.get()), timeout=0.2)
@@ -327,6 +321,12 @@ async def page_ga() -> None:
                 progress_label.set_text(f"Generation {current} / {total}")
             except asyncio.TimeoutError:
                 pass
+
+        # Drain any remaining progress items
+        while not queue.empty():
+            current, total = queue.get_nowait()
+            progress_bar.set_value(current / total if total else 0)
+            progress_label.set_text(f"Generation {current} / {total}")
 
         try:
             ga_res: GaResult = await fut

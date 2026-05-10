@@ -1,5 +1,6 @@
 backtrader==1.9.78.123
 matplotlib==3.8.2
+nicegui>=3.11.1
 pandas==2.2.0
 plotly==5.18.0
 streamlit==1.31.0

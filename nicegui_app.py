@@ -7,6 +7,12 @@ from functools import partial
 import pandas as pd
 import plotly.express as px
 import yfinance as yf
+from datetime import date
+
+from quantquips.backtest_service import BacktestResult, run_backtest
+from quantquips.config import get_settings
+from quantquips.data_service import get_history, load_ticker_lists
+from quantquips.strategies import STRATEGIES
 
 from nicegui import app, ui
 
@@ -76,10 +82,156 @@ async def page_home() -> None:
                 ui.timer(0.1, _load, once=True)
 
 
+def _ticker_options() -> list[str]:
+    try:
+        tickers = load_ticker_lists(get_settings())
+        if not tickers.empty and "Ticker" in tickers:
+            return sorted(tickers["Ticker"].dropna().astype(str).unique().tolist())
+    except Exception:
+        pass
+    return ["AAPL", "BHARTIARTL.NS"]
+
+
 @ui.page("/backtest")
-def page_backtest() -> None:
+async def page_backtest() -> None:
     layout()
-    ui.label("Backtesting — coming in Task 4").classes("text-h6 q-pa-lg")
+    ui.label("Backtesting").classes("text-h5 q-px-md q-pt-md")
+
+    default_end = date.today()
+    default_start = default_end.replace(year=default_end.year - 1)
+    ticker_opts = _ticker_options()
+
+    # --- state refs ---
+    result_area = ui.column().classes("w-full q-px-md")
+
+    with ui.row().classes("w-full q-px-md q-gutter-md items-start"):
+        # Left input panel
+        with ui.card().classes("col-3 q-pa-md"):
+            ui.label("Inputs").classes("text-subtitle1 text-bold q-mb-sm")
+            ticker_input = ui.select(ticker_opts, value=ticker_opts[0], label="Ticker").classes("w-full")
+            strategy_input = ui.select(list(STRATEGIES.keys()), value="Buy and Hold", label="Strategy").classes("w-full")
+            start_input = ui.date(value=default_start.isoformat()).classes("w-full")
+            end_input = ui.date(value=default_end.isoformat()).classes("w-full")
+            cash_input = ui.number(label="Starting cash", value=10000.0, min=100.0, step=1000.0).classes("w-full")
+            comm_input = ui.number(label="Commission", value=0.001, min=0.0, max=0.05, step=0.001, format="%.4f").classes("w-full")
+            refresh_input = ui.switch("Use latest Yahoo data", value=True)
+
+            sma_card = ui.card().classes("w-full q-pa-sm")
+            with sma_card:
+                short_input = ui.number(label="Short SMA period", value=5, min=2, max=250).classes("w-full")
+                long_input = ui.number(label="Long SMA period", value=20, min=3, max=400).classes("w-full")
+            sma_card.set_visibility(False)
+
+            def _toggle_sma(e):
+                sma_card.set_visibility(e.value == "SMA Crossover")
+            strategy_input.on("update:model-value", _toggle_sma)
+
+            run_btn = ui.button("Run Backtest", icon="play_arrow").props("color=primary").classes("w-full q-mt-sm")
+
+        # Right content area
+        with ui.column().classes("col q-gutter-md"):
+            preview_slot = ui.column().classes("w-full")
+            result_area = ui.column().classes("w-full")
+
+    async def _run_backtest() -> None:
+        result_area.clear()
+        preview_slot.clear()
+        tkr = ticker_input.value
+        strat = strategy_input.value
+        start = date.fromisoformat(start_input.value)
+        end = date.fromisoformat(end_input.value)
+
+        # Show price preview
+        with preview_slot:
+            spinner = ui.spinner(size="lg")
+        loop = asyncio.get_event_loop()
+        try:
+            preview = await loop.run_in_executor(
+                None, partial(get_history, tkr, start.isoformat(), end.isoformat(), "1d", refresh_input.value)
+            )
+        except Exception as exc:
+            preview_slot.clear()
+            with preview_slot:
+                ui.notification(f"Could not load price data: {exc}", type="negative")
+            return
+        preview_slot.clear()
+        if not preview.empty and "Close" in preview.columns:
+            fig = px.line(preview, x=preview.index, y="Close", title=f"{tkr} close price")
+            fig.update_layout(height=320, margin=dict(l=10, r=10, t=40, b=10))
+            with preview_slot:
+                ui.plotly(fig).classes("w-full")
+
+        # Validate SMA
+        params: dict = {}
+        if strat == "SMA Crossover":
+            sp, lp = int(short_input.value), int(long_input.value)
+            if sp >= lp:
+                with result_area:
+                    ui.notification("Short SMA period must be less than Long SMA period.", type="warning")
+                return
+            params = {"short_period": sp, "long_period": lp}
+
+        # Run backtest
+        with result_area:
+            spin2 = ui.spinner(size="lg")
+        try:
+            res: BacktestResult = await loop.run_in_executor(
+                None, partial(run_backtest, tkr, strat, start, end, float(cash_input.value),
+                              float(comm_input.value), params, refresh_input.value)
+            )
+        except Exception as exc:
+            result_area.clear()
+            with result_area:
+                ui.notification(f"Backtest failed: {exc}", type="negative")
+            return
+
+        result_area.clear()
+        import math
+        with result_area:
+            ui.label(f"{res.strategy} on {res.ticker}  ·  {res.start} → {res.end}").classes("text-caption text-grey-5")
+            # Metrics row 1
+            with ui.row().classes("q-gutter-md q-mb-sm"):
+                for title, val in [
+                    ("Starting value", f"${res.starting_value:,.2f}"),
+                    ("Ending value", f"${res.ending_value:,.2f}"),
+                    ("Profit", f"${res.profit:,.2f}  ({res.return_pct:.2f}%)"),
+                    ("Closed trades", str(res.trade_count)),
+                ]:
+                    with ui.card().classes("q-pa-sm"):
+                        ui.label(title).classes("text-caption text-grey-5")
+                        ui.label(val).classes("text-h6 text-bold")
+            # Metrics row 2
+            sharpe_str = f"{res.sharpe:.2f}" if not math.isnan(res.sharpe) else "N/A"
+            avg_pnl = res.trades["pnl"].mean() if not res.trades.empty else float("nan")
+            avg_pnl_str = f"${avg_pnl:,.4f}" if not math.isnan(avg_pnl) else "N/A"
+            with ui.row().classes("q-gutter-md q-mb-sm"):
+                for title, val in [
+                    ("Max drawdown", f"{res.max_drawdown_pct:.2f}%"),
+                    ("Approx Sharpe", sharpe_str),
+                    ("Avg trade P&L", avg_pnl_str),
+                ]:
+                    with ui.card().classes("q-pa-sm"):
+                        ui.label(title).classes("text-caption text-grey-5")
+                        ui.label(val).classes("text-h6 text-bold")
+            # Equity curve
+            if not res.equity_curve.empty:
+                ui.label("Equity Curve").classes("text-subtitle1 text-bold q-mt-sm")
+                eq_df = res.equity_curve.reset_index()
+                eq_df.columns = ["Date", "Portfolio Value"]
+                fig_eq = px.line(eq_df, x="Date", y="Portfolio Value")
+                fig_eq.update_layout(height=360, margin=dict(l=10, r=10, t=30, b=10))
+                ui.plotly(fig_eq).classes("w-full")
+            # Trades table
+            if not res.trades.empty:
+                with ui.expansion(f"Trades ({len(res.trades)} closed)", icon="table_chart").classes("w-full"):
+                    ui.table(
+                        columns=[{"name": c, "label": c, "field": c} for c in res.trades.columns],
+                        rows=res.trades.to_dict("records"),
+                    ).classes("w-full")
+            else:
+                ui.label("No closed trades recorded.").classes("text-grey-5")
+
+    run_btn.on("click", _run_backtest)
 
 
 @ui.page("/ga")

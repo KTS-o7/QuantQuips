@@ -1,4 +1,7 @@
 stealthAlgo/
+.venv*/
+.pycache/
+.matplotlib/
 data/Yahoo Ticker Symbols - September 2017.xlsx
 data/tickers.csv
 mistral-7b-openorca.Q4_0.gguf

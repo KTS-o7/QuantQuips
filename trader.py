@@ -1,38 +1,53 @@
-# trader.py
-import backtrader as bt
-import datetime
-from strategies import TestStrategy
-import matplotlib.pyplot as plt
-from io import BytesIO
-import sys
+from __future__ import annotations
 
-cerebro = bt.Cerebro()
+import argparse
+from datetime import date
 
-# Get initial principal amount from command-line argument
-initial_principal_amount = float(sys.argv[1])
-cerebro.broker.setcash(initial_principal_amount)
-
-data = bt.feeds.YahooFinanceCSVData(
-    dataname='/home/krishnatejaswis/Files/VSCode/stealthAlgo/data/companyData/US/AAPL.csv',
-    fromdate=datetime.datetime(2023, 1, 1),
-    todate=datetime.datetime(2023, 12, 31),
-    reverse=False)
-
-cerebro.adddata(data)
-cerebro.addstrategy(TestStrategy)
-
-# Display initial portfolio value
-print(f'Initial Portfolio Value: ${initial_principal_amount:.2f}')
-
-cerebro.run()
+from quantquips.backtest_service import run_backtest
 
 
-# Get final portfolio value
-final_portfolio_value = cerebro.broker.getvalue()
-print(f'Ending Portfolio Value: ${final_portfolio_value:.2f}')
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run a QuantQuips backtest from the command line.")
+    parser.add_argument("ticker", help="Ticker symbol, for example AAPL or BHARTIARTL.NS")
+    parser.add_argument("--strategy", default="Buy and Hold", choices=["Buy and Hold", "SMA Crossover"])
+    parser.add_argument("--cash", type=float, default=10000.0)
+    parser.add_argument("--commission", type=float, default=0.001)
+    parser.add_argument("--start", type=date.fromisoformat, default=date(2023, 1, 1))
+    parser.add_argument("--end", type=date.fromisoformat, default=date(2023, 12, 31))
+    parser.add_argument("--short-period", type=int, default=5)
+    parser.add_argument("--long-period", type=int, default=20)
+    parser.add_argument("--refresh-data", action="store_true")
+    return parser.parse_args()
 
-# Plot interactive graph
-#fig,ax = plt.subplots()
-#cerebro.plot(style='candlestick', barup='green', bardown='red')
-#plt.show()
-cerebro.plot()
+
+def main() -> None:
+    args = parse_args()
+    params = {}
+    if args.strategy == "SMA Crossover":
+        params = {
+            "short_period": args.short_period,
+            "long_period": args.long_period,
+        }
+
+    result = run_backtest(
+        ticker=args.ticker,
+        strategy_name=args.strategy,
+        start=args.start,
+        end=args.end,
+        cash=args.cash,
+        commission=args.commission,
+        strategy_params=params,
+        refresh_data=args.refresh_data,
+    )
+
+    print(f"Ticker: {result.ticker}")
+    print(f"Strategy: {result.strategy}")
+    print(f"Initial Portfolio Value: ${result.starting_value:,.2f}")
+    print(f"Ending Portfolio Value: ${result.ending_value:,.2f}")
+    print(f"Profit: ${result.profit:,.2f}")
+    print(f"Return: {result.return_pct:.2f}%")
+    print(f"Closed Trades: {result.trade_count}")
+
+
+if __name__ == "__main__":
+    main()

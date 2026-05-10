@@ -10,6 +10,7 @@ import yfinance as yf
 from datetime import date
 
 from quantquips.backtest_service import BacktestResult, run_backtest
+from quantquips.ga_service import GaResult, run_ga_optimization
 from quantquips.config import get_settings
 from quantquips.data_service import get_history, load_ticker_lists
 from quantquips.strategies import STRATEGIES
@@ -235,9 +236,144 @@ async def page_backtest() -> None:
 
 
 @ui.page("/ga")
-def page_ga() -> None:
+async def page_ga() -> None:
     layout()
-    ui.label("Genetic Algorithm — coming in Task 5").classes("text-h6 q-pa-lg")
+    ui.label("Genetic Algorithm — SMA Crossover Optimiser").classes("text-h5 q-px-md q-pt-md")
+    ui.label(
+        "Evolves Short/Long SMA period pairs over multiple generations. Fitness = total return %."
+    ).classes("text-caption text-grey-5 q-px-md q-mb-md")
+
+    default_end = date.today()
+    default_start = default_end.replace(year=default_end.year - 1)
+    ticker_opts = _ticker_options()
+
+    with ui.row().classes("w-full q-px-md q-gutter-md items-start"):
+        # Left input panel
+        with ui.card().classes("col-3 q-pa-md"):
+            ui.label("Inputs").classes("text-subtitle1 text-bold q-mb-sm")
+            ga_ticker = ui.select(ticker_opts, value=ticker_opts[0], label="Ticker").classes("w-full")
+            ga_start = ui.date(value=default_start.isoformat()).classes("w-full")
+            ga_end = ui.date(value=default_end.isoformat()).classes("w-full")
+            ga_cash = ui.number(label="Starting cash", value=10000.0, min=100.0, step=1000.0).classes("w-full")
+            ga_comm = ui.number(label="Commission", value=0.001, min=0.0, max=0.05, step=0.001, format="%.4f").classes("w-full")
+            ga_refresh = ui.switch("Use latest Yahoo data", value=True)
+
+            ui.separator().classes("q-my-sm")
+            ui.label("GA Parameters").classes("text-caption text-grey-5")
+            ga_pop = ui.slider(min=4, max=60, value=20, step=2).props("label-always").classes("w-full")
+            ui.label().bind_text_from(ga_pop, "value", lambda v: f"Population: {v}")
+            ga_gen = ui.slider(min=2, max=30, value=10).props("label-always").classes("w-full")
+            ui.label().bind_text_from(ga_gen, "value", lambda v: f"Generations: {v}")
+            ga_mut = ui.slider(min=0.05, max=0.5, value=0.2, step=0.05).props("label-always").classes("w-full")
+            ui.label().bind_text_from(ga_mut, "value", lambda v: f"Mutation rate: {v:.2f}")
+
+            ui.separator().classes("q-my-sm")
+            ui.label("SMA Search Ranges").classes("text-caption text-grey-5")
+            short_range = ui.range(min=2, max=100, value={"min": 2, "max": 30}).classes("w-full")
+            ui.label().bind_text_from(short_range, "value", lambda v: f"Short: {v['min']}–{v['max']}")
+            long_range = ui.range(min=5, max=300, value={"min": 10, "max": 100}).classes("w-full")
+            ui.label().bind_text_from(long_range, "value", lambda v: f"Long: {v['min']}–{v['max']}")
+
+            run_btn = ui.button("Run Optimisation", icon="psychology").props("color=primary").classes("w-full q-mt-sm")
+
+        # Right result area
+        with ui.column().classes("col q-gutter-md"):
+            progress_bar = ui.linear_progress(value=0).classes("w-full")
+            progress_label = ui.label("").classes("text-caption text-grey-5")
+            result_area = ui.column().classes("w-full")
+
+    async def _run_ga() -> None:
+        result_area.clear()
+        progress_bar.set_value(0)
+        progress_label.set_text("Starting…")
+
+        sr = short_range.value
+        lr = long_range.value
+        if lr["max"] <= sr["min"]:
+            ui.notification("Long SMA range must exceed Short SMA minimum.", type="warning")
+            return
+
+        import asyncio as _asyncio
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def _cb(current: int, total: int) -> None:
+            asyncio.get_event_loop().call_soon_threadsafe(queue.put_nowait, (current, total))
+
+        loop = asyncio.get_event_loop()
+        fut = loop.run_in_executor(
+            None,
+            partial(
+                run_ga_optimization,
+                ga_ticker.value,
+                date.fromisoformat(ga_start.value),
+                date.fromisoformat(ga_end.value),
+                float(ga_cash.value),
+                float(ga_comm.value),
+                ga_refresh.value,
+                int(ga_pop.value),
+                int(ga_gen.value),
+                float(ga_mut.value),
+                (int(sr["min"]), int(sr["max"])),
+                (int(lr["min"]), int(lr["max"])),
+                _cb,
+            ),
+        )
+
+        total_gens = int(ga_gen.value)
+        while not fut.done():
+            try:
+                current, total = await asyncio.wait_for(asyncio.shield(queue.get()), timeout=0.2)
+                progress_bar.set_value(current / total if total else 0)
+                progress_label.set_text(f"Generation {current} / {total}")
+            except asyncio.TimeoutError:
+                pass
+
+        try:
+            ga_res: GaResult = await fut
+        except Exception as exc:
+            ui.notification(f"Optimisation failed: {exc}", type="negative")
+            return
+
+        progress_bar.set_value(1.0)
+        progress_label.set_text("Optimisation complete.")
+
+        with result_area:
+            ui.label("Best Parameters Found").classes("text-subtitle1 text-bold")
+            with ui.row().classes("q-gutter-md q-mb-sm"):
+                for title, val in [
+                    ("Short SMA period", str(ga_res.best_short)),
+                    ("Long SMA period", str(ga_res.best_long)),
+                    ("Best return", f"{ga_res.best_return_pct:.2f}%"),
+                ]:
+                    with ui.card().classes("q-pa-sm"):
+                        ui.label(title).classes("text-caption text-grey-5")
+                        ui.label(val).classes("text-h6 text-bold")
+
+            hist_df = pd.DataFrame(ga_res.population_history)
+            if not hist_df.empty:
+                ui.label("Population History").classes("text-subtitle1 text-bold q-mt-sm")
+                fig = px.scatter(
+                    hist_df, x="short_period", y="long_period", color="return_pct",
+                    color_continuous_scale="RdYlGn",
+                    hover_data=["generation", "return_pct"],
+                    labels={"short_period": "Short SMA", "long_period": "Long SMA", "return_pct": "Return %"},
+                )
+                fig.update_traces(marker_size=8)
+                fig.update_layout(height=460, margin=dict(l=10, r=10, t=30, b=10))
+                ui.plotly(fig).classes("w-full")
+
+                best_per_gen = (
+                    hist_df.sort_values("return_pct", ascending=False)
+                    .groupby("generation").first().reset_index()
+                    [["generation", "short_period", "long_period", "return_pct"]]
+                )
+                with ui.expansion("Best individual per generation", icon="expand_more").classes("w-full"):
+                    ui.table(
+                        columns=[{"name": c, "label": c, "field": c} for c in best_per_gen.columns],
+                        rows=best_per_gen.to_dict("records"),
+                    ).classes("w-full")
+
+    run_btn.on("click", _run_ga)
 
 
 @ui.page("/llm")

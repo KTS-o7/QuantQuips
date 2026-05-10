@@ -377,15 +377,55 @@ async def page_ga() -> None:
 
 
 @ui.page("/llm")
-def page_llm() -> None:
+async def page_llm() -> None:
     layout()
-    ui.label("LLM — coming in Task 6").classes("text-h6 q-pa-lg")
+    ui.label("LLM Assistant").classes("text-h5 q-px-md q-pt-md")
+
+    settings = get_settings()
+    with ui.card().classes("q-ma-md q-pa-md"):
+        if settings.llm_provider == "disabled":
+            ui.icon("info", size="lg").classes("text-blue q-mb-sm")
+            ui.label("LLM support is disabled.").classes("text-subtitle1 text-bold")
+            ui.label(
+                "Set the QUANTQUIPS_LLM_PROVIDER environment variable to 'mlx' or 'bifrost' "
+                "to enable LLM support after the provider adapter is implemented."
+            ).classes("text-body2 text-grey-5")
+        else:
+            ui.icon("warning", size="lg").classes("text-orange q-mb-sm")
+            ui.label(f"Provider '{settings.llm_provider}' configured but not yet implemented.").classes("text-subtitle1")
+            ui.label(
+                "The LangChain v1 agent adapter for this provider has not been built yet."
+            ).classes("text-body2 text-grey-5")
 
 
 @ui.page("/about")
-def page_about() -> None:
+async def page_about() -> None:
     layout()
-    ui.label("About — coming in Task 7").classes("text-h6 q-pa-lg")
+    ui.label("About QuantQuips").classes("text-h5 q-px-md q-pt-md")
+
+    with ui.card().classes("q-ma-md q-pa-md"):
+        ui.label(
+            "QuantQuips is a personal research workspace for exploring market data, "
+            "running educational backtests, and experimenting with AI-assisted strategy analysis."
+        ).classes("text-body1")
+        ui.separator().classes("q-my-md")
+        ui.label("Educational research only. This app does not place trades or provide financial advice.").classes(
+            "text-caption text-orange"
+        )
+
+    ui.label("Our Team").classes("text-h6 q-px-md q-mt-md q-mb-sm")
+    team = [
+        ("Krishnatejaswi S", "LangChain Developer"),
+        ("Vinayak C", "ML Engineer"),
+        ("Bipin Raj C", "Python Developer"),
+        ("Ananya Bhat", "Python Developer"),
+    ]
+    with ui.row().classes("q-px-md q-gutter-md"):
+        for name, role in team:
+            with ui.card().classes("q-pa-md items-center"):
+                ui.avatar(name[0], color="primary", size="xl").classes("q-mb-sm")
+                ui.label(name).classes("text-subtitle2 text-bold")
+                ui.label(role).classes("text-caption text-grey-5")
 
 
 if __name__ in {"__main__", "__mp_main__"}:

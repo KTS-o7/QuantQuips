@@ -1,6 +1,13 @@
 # nicegui_app.py
 from __future__ import annotations
 
+import asyncio
+from functools import partial
+
+import pandas as pd
+import plotly.express as px
+import yfinance as yf
+
 from nicegui import app, ui
 
 
@@ -25,10 +32,48 @@ def layout() -> None:
             ui.link(label, path).classes("text-white block q-py-xs")
 
 
+def _download_period(ticker: str, period: str, interval: str) -> pd.DataFrame:
+    data = yf.download(ticker, period=period, interval=interval, progress=False)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+    return data
+
+
 @ui.page("/")
-def page_home() -> None:
+async def page_home() -> None:
     layout()
-    ui.label("Home — coming in Task 3").classes("text-h6 q-pa-lg")
+    ui.label("Market Snapshot").classes("text-h5 q-pa-md")
+
+    symbols = {"Nifty 50": "^NSEI", "Sensex": "^BSESN"}
+    with ui.row().classes("w-full q-px-md q-gutter-md"):
+        for label, ticker in symbols.items():
+            with ui.card().classes("flex-1"):
+                title_label = ui.label(label).classes("text-subtitle1 text-bold")
+                metric_label = ui.label("Loading...").classes("text-h6")
+                chart_slot = ui.column().classes("w-full")
+
+                async def _load(lbl=label, tkr=ticker, ml=metric_label, cs=chart_slot) -> None:
+                    loop = asyncio.get_event_loop()
+                    try:
+                        data = await loop.run_in_executor(
+                            None, partial(_download_period, tkr, "1d", "1m")
+                        )
+                    except Exception as exc:
+                        ml.set_text(f"Error: {exc}")
+                        return
+                    if data.empty or "Close" not in data:
+                        ml.set_text("No live data available")
+                        return
+                    first = float(data["Close"].iloc[0])
+                    last = float(data["Close"].iloc[-1])
+                    pct = ((last - first) / first * 100) if first else 0.0
+                    ml.set_text(f"{last:,.2f}  ({pct:+.2f}%)")
+                    fig = px.line(data, x=data.index, y="Close", title=f"{lbl} intraday")
+                    fig.update_layout(height=320, margin=dict(l=10, r=10, t=40, b=10))
+                    with cs:
+                        ui.plotly(fig).classes("w-full")
+
+                ui.timer(0.1, _load, once=True)
 
 
 @ui.page("/backtest")
